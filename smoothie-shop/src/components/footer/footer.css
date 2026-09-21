@@ -1,0 +1,121 @@
+.footer {
+  margin-top: 50px;
+  padding: 3.5rem 1.25rem;
+  background: var(--color-text-main);
+  border-top: 4px solid var(--color-accent);
+  color: #fffaf1;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+}
+
+/* Brand / copyright */
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1; /* Allows this section to take up exactly 1/3 of the space */
+}
+
+.footer-brand p:first-child {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fffaf1;
+}
+
+.footer-brand p:last-child {
+  margin: 0;
+  font-size: 13px;
+  color: #c7c8b9;
+}
+
+/* Navigation */
+.footer-links {
+  display: flex;
+  gap: 35px;
+  flex: 1;
+  justify-content: center; /* Perfectly centers the links in the middle of the screen */
+}
+
+.footer-links a {
+  color: #f3dfb0;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  position: relative;
+  transition: color 0.3s ease;
+  padding-bottom: 4px;
+}
+
+/* Custom CSS animated underline for navigation links */
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: #ffffff;
+}
+
+.footer-links a:hover::after {
+  width: 100%;
+}
+
+/* Social / contact links */
+.footer-social {
+  display: flex;
+  gap: 25px;
+  flex: 1;
+  justify-content: flex-end; /* Pushes the social links neatly to the right edge */
+}
+
+.footer-social a {
+  color: #c7c8b9;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition:
+    color 0.3s ease,
+    transform 0.2s ease;
+}
+
+/* Subtle lift effect on hover */
+.footer-social a:hover {
+  color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 40px;
+  }
+
+  .footer-brand,
+  .footer-links,
+  .footer-social {
+    align-items: center;
+    justify-content: center;
+  }
+}

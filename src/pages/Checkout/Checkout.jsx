@@ -29,6 +29,22 @@ const Checkout = () => {
   });
 
   const onSubmit = (data) => {
+    try {
+      fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: data,
+          items: cart,
+          totalAmount: cart.reduce(
+            (total, current) => total + current.price * current.quantity,
+            0,
+          ),
+        }),
+      }).catch(() => {});
+    } catch {
+      // safe fallback
+    }
     setCart([]);
     navigate("/");
   };

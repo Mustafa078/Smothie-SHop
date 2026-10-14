@@ -24,6 +24,9 @@ const Navbar = () => {
         <Link className="nav-link" to={"/checkout"}>
           Checkout
         </Link>
+        <Link className="nav-link nav-link--admin" to={"/admin"}>
+          Admin
+        </Link>
       </nav>
     </div>
   );

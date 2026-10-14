@@ -22,11 +22,19 @@ const Home = () => {
   const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
+    const handleUpdate = () => {
+      setProduct(productData());
+    };
+    window.addEventListener("productsUpdated", handleUpdate);
+
     const slideTimer = window.setInterval(() => {
       setActiveSlide((currentSlide) => (currentSlide + 1) % heroSlides.length);
     }, 5000);
 
-    return () => window.clearInterval(slideTimer);
+    return () => {
+      window.clearInterval(slideTimer);
+      window.removeEventListener("productsUpdated", handleUpdate);
+    };
   }, []);
 
   const showSlide = (slideIndex) => {

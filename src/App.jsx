@@ -10,6 +10,7 @@ import NotFound from "./pages/Not-found/Notfound.jsx";
 import ChatBot from "./components/chatBot/Chatbot.jsx";
 import Footer from "./components/footer/footer.jsx";
 import About from "./pages/About/About.jsx";
+import Admin from "./pages/Admin/Admin.jsx";
 import "./App.css";
 
 const App = () => {
@@ -28,6 +29,7 @@ const App = () => {
             ></Route>
             <Route path="/checkout" element={<Checkout />}></Route>
             <Route path="/about" element={<About />}></Route>
+            <Route path="/admin" element={<Admin />}></Route>
             <Route path="*" element={<NotFound />}></Route>
           </Routes>
         </main>

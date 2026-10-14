@@ -70,7 +70,11 @@ const ProductDetails = () => {
         <button
           className="product-details-buy"
           onClick={() => {
-            isLoggedIn ? addToCart(product) : setShowModal(true);
+            if (isLoggedIn) {
+              addToCart(product);
+            } else {
+              setShowModal(true);
+            }
           }}
         >
           Buy smoothie

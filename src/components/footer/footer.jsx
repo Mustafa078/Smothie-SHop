@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
 import "./footer.css";
 
+const currentYear = new Date().getFullYear();
+
 const Footer = () => {
   return (
     <footer className="footer">
       <div className="footer-content">
         <div className="footer-brand">
           <p>
-            &copy; {new Date().getFullYear()} Smoothy Shop. All rights reserved
+            &copy; {currentYear} Smoothy Shop. All rights reserved
           </p>
           <p>Made in react by Muhammad Faizan Mustafa</p>
         </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
-import { AuthContext } from "../../context/AuthProvider";
-import { presetImages, resolveThumbnail, saveStoredProducts } from "../../data/product";
+import { AuthContext } from "../../context/AuthProvider.jsx";
+import { presetImages, resolveThumbnail, saveStoredProducts } from "../../data/product.jsx";
 import "./admin.css";
 
 const Admin = () => {

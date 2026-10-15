@@ -1,10 +1,10 @@
 import { useParams } from "react-router-dom";
 import { useContext } from "react";
-import { CartContext } from "../../context/CartContext";
+import { CartContext } from "../../context/CartContext.jsx";
 import { /* useEffect, */ useState } from "react";
-import { AuthContext } from "../../context/AuthProvider";
-import productData from "../../data/product";
-import LoginModal from "../../components/Login_Modal/LoginModal";
+import { AuthContext } from "../../context/AuthProvider.jsx";
+import productData from "../../data/product.jsx";
+import LoginModal from "../../components/Login_Modal/LoginModal.jsx";
 import { useNavigate } from "react-router-dom";
 /* import axios from "axios";
  */ import "./productDetail.css";

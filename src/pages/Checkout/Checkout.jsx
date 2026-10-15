@@ -4,7 +4,7 @@ import { z } from "zod";
 import "./checkout.css";
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { CartContext } from "../../context/CartContext";
+import { CartContext } from "../../context/CartContext.jsx";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),

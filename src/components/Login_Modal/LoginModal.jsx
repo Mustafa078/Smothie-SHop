@@ -1,5 +1,5 @@
 import { useState, useContext } from "react";
-import { AuthContext } from "../../context/AuthProvider";
+import { AuthContext } from "../../context/AuthProvider.jsx";
 import "./LoginModal.css";
 const LoginModal = ({ onClose, onSuccess }) => {
   const [userName, setUserName] = useState("");

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 /* import { useEffect } from "react";
 import axios from "axios"; */
 import { Link } from "react-router-dom";
-import productData from "../../data/product";
+import productData from "../../data/product.jsx";
 import "./Home.css";
 
 import berryImage from "../../assets/berry.jpg";

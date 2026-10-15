@@ -1,4 +1,4 @@
-import chatData from "../../data/chatData";
+import chatData from "../../data/chatData.jsx";
 import { useState } from "react";
 import "./chatBot.css";
 

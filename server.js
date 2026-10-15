@@ -488,7 +488,7 @@ app.post("/api/admin/change-password", async (req, res) => {
 // ----------------------
 // VITE INTEGRATION
 // ----------------------
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 
 if (!isProduction) {
   const { createServer: createViteServer } = await import("vite");
@@ -497,13 +497,17 @@ if (!isProduction) {
     appType: "spa",
   });
   app.use(vite.middlewares);
-} else {
+} else if (!process.env.VERCEL) {
   app.use(express.static(path.resolve(__dirname, "dist")));
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "dist", "index.html"));
   });
 }
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[Smoothie Shop Server] Listening on http://0.0.0.0:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[Smoothie Shop Server] Listening on http://0.0.0.0:${PORT}`);
+  });
+}
+
+export default app;

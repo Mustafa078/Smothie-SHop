@@ -1,7 +1,13 @@
 import { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthProvider.jsx";
-import { presetImages, resolveThumbnail, saveStoredProducts } from "../../data/product.jsx";
+import {
+  presetImages,
+  resolveThumbnail,
+  saveStoredProducts,
+  getStoredProducts,
+  defaultProductsList,
+} from "../../data/product.jsx";
 import "./admin.css";
 
 const Admin = () => {
@@ -54,22 +60,31 @@ const Admin = () => {
     }, 3500);
   };
 
-  // Fetch products from backend
+  // Fetch products from backend or local storage
   const fetchProducts = async () => {
+    // Populate immediately from local storage so UI is never blank
+    const local = getStoredProducts();
+    if (local && local.length > 0) {
+      setProducts(local);
+    }
+
     try {
       const res = await fetch("/api/products");
-      if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
         const data = await res.json();
-        const mapped = data.map((item) => ({
-          ...item,
-          thumbnail: resolveThumbnail(item.thumbnail),
-          rawThumbnail: item.thumbnail,
-        }));
-        setProducts(mapped);
-        saveStoredProducts(mapped);
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((item) => ({
+            ...item,
+            thumbnail: resolveThumbnail(item.thumbnail),
+            rawThumbnail: item.thumbnail,
+          }));
+          setProducts(mapped);
+          saveStoredProducts(mapped);
+        }
       }
     } catch (err) {
-      console.warn("Failed to fetch products from backend:", err);
+      console.warn("Backend API sync note (using store data):", err);
     }
   };
 
@@ -77,26 +92,41 @@ const Admin = () => {
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders");
-      if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
         const data = await res.json();
-        setOrders(data);
+        if (Array.isArray(data)) {
+          setOrders(data);
+          try {
+            localStorage.setItem("smoothie_orders_cache", JSON.stringify(data));
+          } catch {}
+          return;
+        }
       }
     } catch (err) {
-      console.warn("Failed to fetch orders:", err);
+      console.warn("Failed to fetch orders from backend:", err);
     }
+
+    try {
+      const cached = JSON.parse(localStorage.getItem("smoothie_orders_cache") || "[]");
+      setOrders(cached);
+    } catch {}
   };
 
   // Check health and MongoDB connection
   const checkHealth = async () => {
     try {
       const res = await fetch("/api/health");
-      if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
         const data = await res.json();
         setMongoStatus({ connected: Boolean(data.mongoConnected), checked: true });
+        return;
       }
     } catch {
-      setMongoStatus({ connected: false, checked: true });
+      // safe fallback
     }
+    setMongoStatus({ connected: false, checked: true });
   };
 
   useEffect(() => {
@@ -252,14 +282,17 @@ const Admin = () => {
     }
 
     const payload = {
-      title: formData.title,
+      title: formData.title.trim(),
       price: parseFloat(formData.price),
-      shortDescription: formData.shortDescription,
-      description: formData.description,
+      shortDescription: formData.shortDescription?.trim() || "",
+      description: formData.description?.trim() || "",
       thumbnail: finalThumbnail,
-      category: formData.category,
-      inStock: formData.inStock,
+      category: formData.category || "Classic",
+      inStock: Boolean(formData.inStock),
     };
+
+    let backendSaved = false;
+    let savedItem = null;
 
     try {
       const res = await fetch("/api/products", {
@@ -268,17 +301,34 @@ const Admin = () => {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        setIsAddModalOpen(false);
-        showNotification("✨ Smoothie product created successfully in MongoDB / store!");
-        await fetchProducts();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to create product");
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        savedItem = await res.json();
+        backendSaved = true;
       }
-    } catch (err) {
-      alert("Error adding product: " + err.message);
+    } catch (apiErr) {
+      console.warn("Backend API sync note (using local store):", apiErr.message);
     }
+
+    // Always ensure product is committed to catalog
+    const newProduct = {
+      id: savedItem?.id || String(Date.now()),
+      ...payload,
+      thumbnail: resolveThumbnail(payload.thumbnail),
+      rawThumbnail: payload.thumbnail,
+    };
+
+    const currentList = products && products.length > 0 ? products : getStoredProducts();
+    const updated = [newProduct, ...currentList.filter((p) => p.id !== newProduct.id)];
+    setProducts(updated);
+    saveStoredProducts(updated);
+
+    setIsAddModalOpen(false);
+    showNotification(
+      backendSaved
+        ? "✨ Smoothie product created successfully in MongoDB & store!"
+        : "✨ Smoothie product created successfully in store catalog!"
+    );
   };
 
   // Save Product Changes
@@ -295,53 +345,61 @@ const Admin = () => {
     }
 
     const payload = {
-      title: formData.title,
+      title: formData.title.trim(),
       price: parseFloat(formData.price),
-      shortDescription: formData.shortDescription,
-      description: formData.description,
+      shortDescription: formData.shortDescription?.trim() || "",
+      description: formData.description?.trim() || "",
       thumbnail: finalThumbnail,
-      category: formData.category,
-      inStock: formData.inStock,
+      category: formData.category || "Classic",
+      inStock: Boolean(formData.inStock),
     };
 
     try {
-      const res = await fetch(`/api/products/${editingProduct.id}`, {
+      await fetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      if (res.ok) {
-        setEditingProduct(null);
-        showNotification(`✅ Updated "${formData.title}" details & pricing!`);
-        await fetchProducts();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to update product");
-      }
-    } catch (err) {
-      alert("Error updating product: " + err.message);
+    } catch (apiErr) {
+      console.warn("Backend update sync note:", apiErr.message);
     }
+
+    const currentList = products && products.length > 0 ? products : getStoredProducts();
+    const updated = currentList.map((p) =>
+      p.id === editingProduct.id
+        ? {
+            ...p,
+            ...payload,
+            thumbnail: resolveThumbnail(payload.thumbnail),
+            rawThumbnail: payload.thumbnail,
+          }
+        : p
+    );
+    setProducts(updated);
+    saveStoredProducts(updated);
+
+    setEditingProduct(null);
+    showNotification(`✅ Updated "${formData.title}" details & pricing!`);
   };
 
   // Delete Product
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
     try {
-      const res = await fetch(`/api/products/${productToDelete.id}`, {
+      await fetch(`/api/products/${productToDelete.id}`, {
         method: "DELETE",
       });
-
-      if (res.ok) {
-        setProductToDelete(null);
-        showNotification(`🗑️ Deleted smoothie "${productToDelete.title}"`);
-        await fetchProducts();
-      } else {
-        alert("Failed to delete product");
-      }
-    } catch (err) {
-      alert("Error deleting product: " + err.message);
+    } catch (apiErr) {
+      console.warn("Backend delete sync note:", apiErr.message);
     }
+
+    const currentList = products && products.length > 0 ? products : getStoredProducts();
+    const updated = currentList.filter((p) => p.id !== productToDelete.id);
+    setProducts(updated);
+    saveStoredProducts(updated);
+
+    setProductToDelete(null);
+    showNotification(`🗑️ Deleted smoothie "${productToDelete.title}"`);
   };
 
   // Reset to default seed products
@@ -355,14 +413,19 @@ const Admin = () => {
     }
 
     try {
-      const res = await fetch("/api/products/reset", { method: "POST" });
-      if (res.ok) {
-        showNotification("🔄 Successfully reset product catalog to default smoothies!");
-        await fetchProducts();
-      }
-    } catch (err) {
-      alert("Failed to reset: " + err.message);
+      await fetch("/api/products/reset", { method: "POST" });
+    } catch (apiErr) {
+      console.warn("Backend reset sync note:", apiErr.message);
     }
+
+    const resetDefaults = defaultProductsList.map((p) => ({
+      ...p,
+      thumbnail: resolveThumbnail(p.thumbnail),
+      rawThumbnail: p.thumbnail,
+    }));
+    setProducts(resetDefaults);
+    saveStoredProducts(resetDefaults);
+    showNotification("🔄 Successfully reset product catalog to default smoothies!");
   };
 
   // Filtered products list

@@ -29,6 +29,25 @@ const Checkout = () => {
   });
 
   const onSubmit = (data) => {
+    const total = cart.reduce(
+      (acc, current) => acc + current.price * current.quantity,
+      0,
+    );
+    const newOrder = {
+      id: `ORD-${Date.now()}`,
+      customer: data,
+      items: cart,
+      totalAmount: total,
+      status: "Processing",
+      createdAt: new Date().toISOString(),
+    };
+
+    // Cache order locally for orders dashboard
+    try {
+      const existing = JSON.parse(localStorage.getItem("smoothie_orders_cache") || "[]");
+      localStorage.setItem("smoothie_orders_cache", JSON.stringify([newOrder, ...existing]));
+    } catch {}
+
     try {
       fetch("/api/orders", {
         method: "POST",
@@ -36,10 +55,7 @@ const Checkout = () => {
         body: JSON.stringify({
           customer: data,
           items: cart,
-          totalAmount: cart.reduce(
-            (total, current) => total + current.price * current.quantity,
-            0,
-          ),
+          totalAmount: total,
         }),
       }).catch(() => {});
     } catch {

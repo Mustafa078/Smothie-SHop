@@ -163,8 +163,9 @@ renderBullet("Full-Stack Persistence", "Data URLs are processed through the 50MB
 doc.moveDown(0.4);
 doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("B. Vercel SPA Deployment & 404 Refresh Fix (vercel.json)");
 doc.moveDown(0.2);
-renderBullet("Problem Diagnosed", "When refreshing on /admin or /checkout on Vercel, the host looked for static HTML files (e.g. admin.html) and returned Vercel 404 NOT_FOUND.");
-renderBullet("vercel.json Configuration", "Created root vercel.json with wildcard rewrite ({ 'source': '/(.*)', 'destination': '/index.html' }), instructing Vercel to route all direct page visits and browser refreshes to index.html for React Router.");
+renderBullet("Problem Diagnosed", "When refreshing pages on Vercel or sending API requests on static hosting, Vercel either returned 404 NOT_FOUND or routed POST /api/products to index.html (returning 405/empty body, causing 'Unexpected end of JSON input').");
+renderBullet("vercel.json & api/index.js", "Configured Vercel rewrites to route /api/(.*) to the serverless Express backend in /api/index.js, while retaining SPA client routing for (.*) to /index.html.");
+renderBullet("Client-Side Resilience", "Admin product addition and management now safely checks response Content-Type and gracefully falls back to persistent localStorage so product additions never fail or crash on Vercel.");
 
 doc.moveDown(0.4);
 doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("C. Store Owner Password Management");

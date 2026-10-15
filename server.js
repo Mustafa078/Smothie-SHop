@@ -186,36 +186,90 @@ const Setting = mongoose.models.Setting || mongoose.model("Setting", settingSche
 
 let adminPassword = process.env.ADMIN_PASSWORD || "admin";
 
-// MongoDB connection
+// MongoDB Serverless Connection Management
 let isMongoConnected = false;
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/smoothie_shop";
+let cached = global._mongooseCached;
+if (!cached) {
+  cached = global._mongooseCached = { conn: null, promise: null };
+}
 
 mongoose.set("bufferCommands", false);
 
 async function connectMongoDB() {
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 2500,
-    });
-    isMongoConnected = true;
-    console.log("[MongoDB] Connected successfully to database.");
+  const uri = process.env.MONGODB_URI;
 
-    // Seed products if collection is empty
-    const count = await Product.countDocuments();
-    if (count === 0) {
-      console.log("[MongoDB] Seeding initial smoothie products...");
-      await Product.insertMany(defaultProducts);
-      console.log("[MongoDB] Initial products seeded successfully.");
+  // On Vercel or cloud serverless, skip localhost connection attempts if MONGODB_URI is not provided
+  if (!uri) {
+    if (process.env.VERCEL) {
+      isMongoConnected = false;
+      return false;
     }
-  } catch (err) {
+  }
+
+  const targetUri = uri || "mongodb://127.0.0.1:27017/smoothie_shop";
+
+  if (cached.conn) {
+    isMongoConnected = true;
+    return true;
+  }
+
+  if (!cached.promise) {
+    cached.promise = mongoose
+      .connect(targetUri, {
+        serverSelectionTimeoutMS: 4000,
+      })
+      .then(async (m) => {
+        isMongoConnected = true;
+        console.log("[MongoDB] Connected successfully to database.");
+        try {
+          const count = await Product.countDocuments();
+          if (count === 0) {
+            console.log("[MongoDB] Seeding initial smoothie products...");
+            await Product.insertMany(defaultProducts);
+            console.log("[MongoDB] Initial products seeded successfully.");
+          }
+        } catch (seedErr) {
+          console.warn("[MongoDB] Seeding check note:", seedErr.message);
+        }
+        return m;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        isMongoConnected = false;
+        console.warn(
+          `[MongoDB] Note: MongoDB connection is currently inactive (${err.message}). Using seamless high-performance in-memory persistence fallback.`
+        );
+        return null;
+      });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+    isMongoConnected = Boolean(cached.conn);
+    return isMongoConnected;
+  } catch {
+    cached.promise = null;
     isMongoConnected = false;
-    console.warn(
-      `[MongoDB] Note: MongoDB connection is currently inactive (${err.message}). Using seamless high-performance in-memory persistence fallback.`
-    );
+    return false;
   }
 }
 
-connectMongoDB();
+// Attempt initial connection if URI is available or running locally
+if (process.env.MONGODB_URI || !process.env.VERCEL) {
+  connectMongoDB();
+}
+
+// Ensure database connection is active on serverless invocations
+app.use("/api", async (req, res, next) => {
+  if (process.env.MONGODB_URI && !isMongoConnected) {
+    try {
+      await connectMongoDB();
+    } catch {
+      // safe fallback
+    }
+  }
+  next();
+});
 
 // ----------------------
 // REST API ROUTES
@@ -234,6 +288,7 @@ app.get("/api/health", async (req, res) => {
   res.json({
     status: "ok",
     mongoConnected: isMongoConnected,
+    hasMongoUriEnv: Boolean(process.env.MONGODB_URI),
     productCount: count,
     timestamp: new Date().toISOString(),
   });

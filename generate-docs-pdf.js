@@ -161,11 +161,14 @@ renderBullet("Client-Side FileReader", "Converts device photos to Base64 data UR
 renderBullet("Full-Stack Persistence", "Data URLs are processed through the 50MB Express body parser and stored in MongoDB / localStorage for storefront rendering.");
 
 doc.moveDown(0.4);
-doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("B. Vercel SPA Deployment & 404 Refresh Fix (vercel.json)");
+doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("B. Vercel SPA Deployment & Environment Variables Guide");
 doc.moveDown(0.2);
-renderBullet("Problem Diagnosed", "When refreshing pages on Vercel or sending API requests on static hosting, Vercel either returned 404 NOT_FOUND or routed POST /api/products to index.html (returning 405/empty body, causing 'Unexpected end of JSON input').");
+renderBullet("Problem Diagnosed", "When refreshing pages on Vercel or sending API requests on static hosting, Vercel returned 404 NOT_FOUND or routed POST /api/products to index.html (returning 405/empty body, causing 'Unexpected end of JSON input').");
 renderBullet("vercel.json & api/index.js", "Configured Vercel rewrites to route /api/(.*) to the serverless Express backend in /api/index.js, while retaining SPA client routing for (.*) to /index.html.");
-renderBullet("Client-Side Resilience", "Admin product addition and management now safely checks response Content-Type and gracefully falls back to persistent localStorage so product additions never fail or crash on Vercel.");
+renderBullet("Environment Variables in Vercel", "When MONGODB_URI is added in Vercel, Vercel ONLY injects it into NEW deployments. You MUST trigger a 'Redeploy' from the Deployments tab for changes to take effect.");
+renderBullet("Environments Scope Checklist", "Ensure MONGODB_URI is checked for both 'Production' and 'Preview' environments in Vercel so branch deployments receive the variable.");
+renderBullet("MongoDB Atlas Whitelist", "Ensure Network Access in MongoDB Atlas has 0.0.0.0/0 enabled (allow access from anywhere) so Vercel's serverless IP addresses can connect.");
+renderBullet("Client-Side Resilience", "Admin product addition and management safely checks response Content-Type and gracefully falls back to persistent localStorage so product additions never fail or crash on Vercel.");
 
 doc.moveDown(0.4);
 doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("C. Store Owner Password Management");

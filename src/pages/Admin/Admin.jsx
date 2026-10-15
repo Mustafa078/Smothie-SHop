@@ -5,12 +5,19 @@ import { presetImages, resolveThumbnail, saveStoredProducts } from "../../data/p
 import "./admin.css";
 
 const Admin = () => {
-  const { isLoggedIn, login } = useContext(AuthContext);
+  const { isLoggedIn, login, logout, changePassword } = useContext(AuthContext);
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
+
+  // Owner Password Change Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   // Admin Dashboard State
   const [products, setProducts] = useState([]);
@@ -107,7 +114,32 @@ const Admin = () => {
       fetchOrders();
       checkHealth();
     } else {
-      setLoginError("Invalid credentials. Try username: admin, password: admin");
+      setLoginError("Invalid credentials. Try username: admin, password: admin (or your custom password)");
+    }
+  };
+
+  // Handle owner changing password
+  const handleOwnerChangePassword = async (e) => {
+    e.preventDefault();
+    if (newPasswordInput !== confirmPasswordInput) {
+      setPasswordError("New password and confirm password do not match.");
+      return;
+    }
+    if (newPasswordInput.trim().length < 4) {
+      setPasswordError("New password must be at least 4 characters long.");
+      return;
+    }
+
+    const res = await changePassword(currentPasswordInput, newPasswordInput);
+    if (res.success) {
+      setIsPasswordModalOpen(false);
+      setCurrentPasswordInput("");
+      setNewPasswordInput("");
+      setConfirmPasswordInput("");
+      setPasswordError("");
+      showNotification("🔒 Password changed successfully! Use your new password on next login.");
+    } else {
+      setPasswordError(res.error || "Failed to update password.");
     }
   };
 
@@ -515,8 +547,20 @@ const Admin = () => {
             </button>
 
             <div className="admin-hint-box">
-              <span>💡 Default credentials:</span>
-              <code>Username: admin | Password: admin</code>
+              <span>💡 Store Owner Credentials:</span>
+              <code>Username: admin | Password: admin (or your custom password)</code>
+            </div>
+
+            <div className="admin-login-docs">
+              <a
+                href="/Smoothie_Shop_Project_Documentation.pdf"
+                download="Smoothie_Shop_Project_Documentation.pdf"
+                className="admin-download-pdf-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                📄 Download Project Documentation (PDF)
+              </a>
             </div>
           </form>
 
@@ -554,9 +598,41 @@ const Admin = () => {
             </span>
           </div>
 
+          <button
+            type="button"
+            className="admin-header-btn admin-password-btn"
+            onClick={() => {
+              setIsPasswordModalOpen(true);
+              setPasswordError("");
+            }}
+            title="Change store owner password"
+          >
+            🔑 Change Password
+          </button>
+
+          <a
+            href="/Smoothie_Shop_Project_Documentation.pdf"
+            download="Smoothie_Shop_Project_Documentation.pdf"
+            className="admin-header-btn admin-doc-btn"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Download complete project documentation as single PDF file"
+          >
+            📄 Documentation PDF
+          </a>
+
           <Link to="/" className="admin-store-link">
             🛍️ Storefront
           </Link>
+
+          <button
+            type="button"
+            className="admin-header-btn admin-logout-btn"
+            onClick={logout}
+            title="Sign out of Admin Console"
+          >
+            🚪 Sign Out
+          </button>
         </div>
       </header>
 
@@ -577,12 +653,6 @@ const Admin = () => {
             }}
           >
             📦 Customer Orders ({orders.length})
-          </button>
-          <button
-            className={`admin-tab ${activeTab === "docs" ? "active" : ""}`}
-            onClick={() => setActiveTab("docs")}
-          >
-            📖 Project Documentation
           </button>
         </div>
 
@@ -773,264 +843,6 @@ const Admin = () => {
               ))}
             </div>
           )}
-        </section>
-      )}
-
-      {/* Documentation Tab */}
-      {activeTab === "docs" && (
-        <section className="admin-content-section admin-docs-section">
-          <div className="docs-header-card">
-            <span className="docs-tag">Technical Project Documentation</span>
-            <h2>Platform Architecture & Contributions</h2>
-            <p className="docs-lead">
-              A detailed breakdown of the independent e-commerce Smoothie Shop, highlighting the original frontend architecture created by <strong>Muhammad Faizan Mustafa</strong> and the full-stack backend, database, and admin panel additions.
-            </p>
-          </div>
-
-          <div className="docs-kpi-bar">
-            <div className="docs-kpi-item">
-              <span className="docs-kpi-icon">🛡️</span>
-              <div>
-                <strong>Code Preserved</strong>
-                <span>100% Original Code Kept Intact</span>
-              </div>
-            </div>
-            <div className="docs-kpi-item">
-              <span className="docs-kpi-icon">⚡</span>
-              <div>
-                <strong>Pure JavaScript</strong>
-                <span>ES Modules & JSX (Zero TS)</span>
-              </div>
-            </div>
-            <div className="docs-kpi-item">
-              <span className="docs-kpi-icon">🍃</span>
-              <div>
-                <strong>MongoDB + Mongoose</strong>
-                <span>Persistent DB & Memory Fallback</span>
-              </div>
-            </div>
-            <div className="docs-kpi-item">
-              <span className="docs-kpi-icon">🚀</span>
-              <div>
-                <strong>Full-Stack Engine</strong>
-                <span>Node 22, Express 5, Vite Middleware</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="docs-columns-grid">
-            {/* Column 1: What User Did */}
-            <article className="docs-column-card card-user">
-              <div className="docs-col-header">
-                <span className="col-icon">👨‍💻</span>
-                <div>
-                  <h3>What You Built</h3>
-                  <span className="col-author">Muhammad Faizan Mustafa (Author & Developer)</span>
-                </div>
-              </div>
-
-              <div className="docs-col-body">
-                <div className="docs-block">
-                  <h4>🎨 Frontend React 19 SPA Architecture</h4>
-                  <ul>
-                    <li>
-                      <strong>Interactive Home View (<code>Home.jsx</code>)</strong>: Built hero carousel with rotating smoothie slides (Berry Bliss, Mango Glow, Strawberry Freshness, Tropical Energy), custom arrow and dot navigation, and responsive 4-column product showcase grid.
-                    </li>
-                    <li>
-                      <strong>Detailed Smoothie View (<code>ProductDetails.jsx</code>)</strong>: Created detailed product pages with flavor tags, nutritional text, previous/next smoothie navigation, and purchase gate.
-                    </li>
-                    <li>
-                      <strong>Shopping Cart Flow (<code>Cart.jsx</code>)</strong>: Built complete cart page with image thumbnails, quantity increment/decrement controls, item deletion, live subtotal calculations, and empty-cart placeholder.
-                    </li>
-                    <li>
-                      <strong>Validated Checkout Flow (<code>Checkout.jsx</code>)</strong>: Implemented complete checkout form with <code>react-hook-form</code> and <code>zod</code> schema validation verifying formatted card numbers (xxxx-xxxx-xxxx-xxxx), shipping addresses, email, and billing details.
-                    </li>
-                    <li>
-                      <strong>About Page (<code>About.jsx</code>)</strong>: Authored developer portfolio section featuring personal avatar, bio ("Behind the blend"), and interactive message contact form.
-                    </li>
-                    <li>
-                      <strong>Interactive AI-Free Chatbot (<code>ChatBot.jsx</code>, <code>chatData.jsx</code>)</strong>: Built rule-based keyword assistant with customizable answers for product, shipping, and order queries.
-                    </li>
-                    <li>
-                      <strong>404 Fallback (<code>Notfound.jsx</code>)</strong>: Designed not-found routing screen.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>🧠 State Management & Providers</h4>
-                  <ul>
-                    <li>
-                      <strong>Cart Context (<code>CartContext.jsx</code>)</strong>: Centralized state providing <code>cart</code>, <code>addToCart</code>, <code>removeFromCart</code>, and <code>updateQuantity</code> with live badge counts in the navbar.
-                    </li>
-                    <li>
-                      <strong>Auth Provider (<code>AuthProvider.jsx</code>)</strong>: Session context managing login state, persistence in <code>localStorage</code>, and authentication checks.
-                    </li>
-                    <li>
-                      <strong>Login Modal (<code>LoginModal.jsx</code>)</strong>: Modal popup with validation prompting guests to log in before purchasing items.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>🍓 Media & Design Assets</h4>
-                  <ul>
-                    <li>
-                      Curated 10 high-resolution smoothie image assets: Berry, Mango, Tropical, Strawberry, Banana, Pineapple, Peach, Green, Chocolate, and Apple.
-                    </li>
-                    <li>
-                      Authored scoped CSS files for all components with distinctive color variables and typography.
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </article>
-
-            {/* Column 2: What Assistant Did */}
-            <article className="docs-column-card card-ai">
-              <div className="docs-col-header">
-                <span className="col-icon">⚙️</span>
-                <div>
-                  <h3>What Was Added / Upgraded</h3>
-                  <span className="col-author">Full-Stack Backend, Database & Admin Tools</span>
-                </div>
-              </div>
-
-              <div className="docs-col-body">
-                <div className="docs-block">
-                  <h4>🔒 Strict Execution & Code Preservation</h4>
-                  <ul>
-                    <li>
-                      <strong>Preserved 100% of Original Code</strong>: Zero rewrites or deletions of your original components, logic, or styles.
-                    </li>
-                    <li>
-                      <strong>100% Pure JavaScript Standard</strong>: All new backend and frontend code was written strictly in JavaScript (<code>.js</code> and <code>.jsx</code>).
-                    </li>
-                    <li>
-                      <strong>Environment Normalization</strong>: Removed subpaths (<code>base: "/Smothie-SHop/"</code> and <code>basename="/Smothie-SHop"</code>) so the app boots cleanly at root, removed extraneous <code>bun.lock</code>, and bound dev server to host <code>0.0.0.0</code> on port <code>3000</code>.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>🖥️ Full-Stack Backend Server (<code>server.js</code>)</h4>
-                  <ul>
-                    <li>
-                      Created an Express 5 application with integrated Vite middleware (`app.use(vite.middlewares)`), providing unified API and frontend hosting in a single process.
-                    </li>
-                    <li>
-                      Configured <code>50mb</code> payload limits for JSON and URL-encoded requests to support high-resolution photo uploads directly from mobile phones and cameras.
-                    </li>
-                    <li>
-                      Included <code>.env.example</code> for standard environment configuration (<code>PORT</code>, <code>MONGODB_URI</code>).
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>🍃 MongoDB & Mongoose Database Layer</h4>
-                  <ul>
-                    <li>
-                      Implemented Mongoose schemas and models for <code>Product</code> and <code>Order</code> with timestamps and schema validation.
-                    </li>
-                    <li>
-                      <strong>Resilient Failover Architecture</strong>: If MongoDB is connected, operations read and write to MongoDB. If MongoDB is offline, it transparently falls back to an in-memory & local storage sync store so the app never freezes or crashes.
-                    </li>
-                    <li>
-                      Initial database auto-seeding of the 10 original smoothies on startup.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>📡 RESTful API Endpoints</h4>
-                  <ul>
-                    <li><code>GET /api/products</code> & <code>GET /api/products/:id</code>: Fetch products</li>
-                    <li><code>POST /api/products</code>: Add new smoothie with image, price, tags, and category</li>
-                    <li><code>PUT /api/products/:id</code>: Update smoothie pricing, descriptions, and stock status</li>
-                    <li><code>DELETE /api/products/:id</code>: Remove product from catalog</li>
-                    <li><code>POST /api/products/reset</code>: One-click restore to original 10 smoothies</li>
-                    <li><code>GET /api/orders</code> & <code>POST /api/orders</code>: Live customer store orders</li>
-                    <li><code>GET /api/health</code>: Real-time database cluster & server status check</li>
-                  </ul>
-                </div>
-
-                <div className="docs-block">
-                  <h4>🛡️ Full Admin Management Panel (<code>/admin</code>)</h4>
-                  <ul>
-                    <li>
-                      Protected by your <code>AuthProvider</code> (Credentials: <code>admin</code> / <code>admin</code>).
-                    </li>
-                    <li>
-                      <strong>Live Catalog & Pricing Editor</strong>: Change any product's price, title, short description, full description, and in-stock flag with instant updates across the store.
-                    </li>
-                    <li>
-                      <strong>Local Device Image Upload</strong>: Integrated a drag-and-drop & file picker allowing admins to upload images directly from their device, converted via <code>FileReader</code> with live previews.
-                    </li>
-                    <li>
-                      <strong>Three Image Sourcing Options</strong>: Fruit presets, Local device upload, or External web URL.
-                    </li>
-                    <li>
-                      <strong>Real-Time Customer Orders Hub</strong>: View incoming customer orders submitted from checkout with names, emails, delivery addresses, items, and total revenue.
-                    </li>
-                    <li>
-                      <strong>Database Engine Status Badge</strong>: Real-time visual indicator showing whether MongoDB is connected or operating in store sync mode.
-                    </li>
-                    <li>
-                      <strong>Responsive CSS</strong>: Styled navigation badge, modals, and fully mobile-optimized viewports.
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div className="docs-specs-card">
-            <h3>Technical Specifications</h3>
-            <div className="specs-table-wrapper">
-              <table className="specs-table">
-                <thead>
-                  <tr>
-                    <th>Component</th>
-                    <th>Technology / Library</th>
-                    <th>Role in Platform</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>Frontend Framework</strong></td>
-                    <td>React 19 + React Router 7</td>
-                    <td>Client SPA routing, component rendering, and hook state</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Build Tool</strong></td>
-                    <td>Vite 8</td>
-                    <td>Hot Module Replacement & development middleware</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Backend Server</strong></td>
-                    <td>Node.js 22 + Express 5</td>
-                    <td>REST API router, static serving, and full-stack runtime</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Database ORM</strong></td>
-                    <td>MongoDB 6+ & Mongoose 9</td>
-                    <td>Persistent document storage for products and customer orders</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Form Validation</strong></td>
-                    <td>React Hook Form 7 + Zod 4</td>
-                    <td>Strict client-side validation on checkout and contact forms</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Image Handling</strong></td>
-                    <td>HTML5 FileReader + 50MB Base64 Buffer</td>
-                    <td>Local device file uploading and instant image rendering</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </section>
       )}
 
@@ -1266,6 +1078,82 @@ const Admin = () => {
                 Yes, Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Owner Password Modal */}
+      {isPasswordModalOpen && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-box confirm-box password-modal-box">
+            <div className="admin-modal-header">
+              <h2>Change Owner Password</h2>
+              <button
+                className="admin-modal-close"
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setPasswordError("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleOwnerChangePassword} className="admin-modal-form">
+              <div className="form-group text-left">
+                <label>Current Password *</label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPasswordInput}
+                  onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group flex-1 text-left">
+                  <label>New Password *</label>
+                  <input
+                    type="password"
+                    placeholder="Min 4 characters"
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group flex-1 text-left">
+                  <label>Confirm Password *</label>
+                  <input
+                    type="password"
+                    placeholder="Repeat new password"
+                    value={confirmPasswordInput}
+                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {passwordError && (
+                <div className="admin-error-box">{passwordError}</div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setPasswordError("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-confirm">
+                  Save New Password
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

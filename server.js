@@ -176,6 +176,16 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 
+const settingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: String, required: true },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const Setting = mongoose.models.Setting || mongoose.model("Setting", settingSchema);
+
+let adminPassword = process.env.ADMIN_PASSWORD || "admin";
+
 // MongoDB connection
 let isMongoConnected = false;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/smoothie_shop";
@@ -431,6 +441,47 @@ app.post("/api/orders", async (req, res) => {
     res.status(201).json(newOrder);
   } catch (err) {
     res.status(500).json({ error: "Failed to save order", details: err.message });
+  }
+});
+
+// POST /api/admin/change-password - Update store owner password
+app.post("/api/admin/change-password", async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    let currentPass = adminPassword;
+
+    if (isMongoConnected) {
+      try {
+        const doc = await Setting.findOne({ key: "admin_password" });
+        if (doc) currentPass = doc.value;
+      } catch {}
+    }
+
+    if (oldPassword !== currentPass) {
+      return res.status(400).json({ error: "Current password does not match." });
+    }
+
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ error: "New password must be at least 4 characters long." });
+    }
+
+    adminPassword = newPassword.trim();
+
+    if (isMongoConnected) {
+      try {
+        await Setting.findOneAndUpdate(
+          { key: "admin_password" },
+          { $set: { value: adminPassword, updatedAt: new Date() } },
+          { upsert: true, new: true }
+        );
+      } catch (err) {
+        console.warn("Failed to persist password in MongoDB:", err.message);
+      }
+    }
+
+    res.json({ message: "Password updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update password", details: err.message });
   }
 });
 

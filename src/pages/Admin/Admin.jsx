@@ -11,7 +11,7 @@ import {
 import "./admin.css";
 
 const Admin = () => {
-  const { isLoggedIn, login, logout, changePassword } = useContext(AuthContext);
+  const { isLoggedIn, login, logout, changePassword, getAuthHeaders } = useContext(AuthContext);
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState("");
@@ -88,10 +88,16 @@ const Admin = () => {
     }
   };
 
-  // Fetch orders
+  // Fetch orders (Protected)
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/orders", {
+        headers: getAuthHeaders(),
+      });
+      if (res.status === 401) {
+        logout();
+        return;
+      }
       const contentType = res.headers.get("content-type") || "";
       if (res.ok && contentType.includes("application/json")) {
         const data = await res.json();
@@ -113,6 +119,47 @@ const Admin = () => {
     } catch {}
   };
 
+  // Synchronize offline localStorage queue to MongoDB when connected (Protected)
+  const syncOfflineData = async () => {
+    try {
+      // 1. Sync pending offline products
+      const offlineProducts = JSON.parse(
+        localStorage.getItem("smoothie_offline_products_queue") || "[]"
+      );
+      if (offlineProducts.length > 0) {
+        const pRes = await fetch("/api/sync/products", {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ products: offlineProducts }),
+        });
+        if (pRes.ok) {
+          localStorage.removeItem("smoothie_offline_products_queue");
+          showNotification(`🔄 Auto-synced ${offlineProducts.length} offline product(s) to MongoDB!`);
+          fetchProducts();
+        }
+      }
+
+      // 2. Sync pending offline orders
+      const offlineOrders = JSON.parse(
+        localStorage.getItem("smoothie_offline_orders_queue") || "[]"
+      );
+      if (offlineOrders.length > 0) {
+        const oRes = await fetch("/api/sync/orders", {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ orders: offlineOrders }),
+        });
+        if (oRes.ok) {
+          localStorage.removeItem("smoothie_offline_orders_queue");
+          showNotification(`🔄 Auto-synced ${offlineOrders.length} offline order(s) to MongoDB!`);
+          fetchOrders();
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Offline synchronization deferred:", syncErr);
+    }
+  };
+
   // Check health and MongoDB connection
   const checkHealth = async () => {
     try {
@@ -120,7 +167,11 @@ const Admin = () => {
       const contentType = res.headers.get("content-type") || "";
       if (res.ok && contentType.includes("application/json")) {
         const data = await res.json();
-        setMongoStatus({ connected: Boolean(data.mongoConnected), checked: true });
+        const isConn = Boolean(data.mongoConnected);
+        setMongoStatus({ connected: isConn, checked: true });
+        if (isConn && isLoggedIn) {
+          syncOfflineData();
+        }
         return;
       }
     } catch {
@@ -131,20 +182,22 @@ const Admin = () => {
 
   useEffect(() => {
     fetchProducts();
-    fetchOrders();
+    if (isLoggedIn) {
+      fetchOrders();
+    }
     checkHealth();
-  }, []);
+  }, [isLoggedIn]);
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
-    const success = login(usernameInput, passwordInput);
-    if (success) {
+    const result = await login(usernameInput, passwordInput);
+    if (result && result.success) {
       setLoginError("");
       fetchProducts();
       fetchOrders();
       checkHealth();
     } else {
-      setLoginError("Invalid credentials. Try username: admin, password: admin (or your custom password)");
+      setLoginError(result?.error || "Invalid credentials. Try username: admin, password: admin (or your custom password)");
     }
   };
 
@@ -297,9 +350,15 @@ const Admin = () => {
     try {
       const res = await fetch("/api/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
+
+      if (res.status === 401) {
+        logout();
+        alert("Session expired. Please log in again as admin.");
+        return;
+      }
 
       const contentType = res.headers.get("content-type") || "";
       if (res.ok && contentType.includes("application/json")) {
@@ -323,11 +382,21 @@ const Admin = () => {
     setProducts(updated);
     saveStoredProducts(updated);
 
+    if (!backendSaved) {
+      try {
+        const queue = JSON.parse(localStorage.getItem("smoothie_offline_products_queue") || "[]");
+        localStorage.setItem(
+          "smoothie_offline_products_queue",
+          JSON.stringify([...queue.filter((q) => q.id !== newProduct.id), newProduct])
+        );
+      } catch {}
+    }
+
     setIsAddModalOpen(false);
     showNotification(
       backendSaved
         ? "✨ Smoothie product created successfully in MongoDB & store!"
-        : "✨ Smoothie product created successfully in store catalog!"
+        : "✨ Smoothie product saved offline in catalog (queued for auto-sync)!"
     );
   };
 
@@ -354,12 +423,22 @@ const Admin = () => {
       inStock: Boolean(formData.inStock),
     };
 
+    let backendSaved = false;
+
     try {
-      await fetch(`/api/products/${editingProduct.id}`, {
+      const res = await fetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
+      if (res.status === 401) {
+        logout();
+        alert("Session expired. Please log in again as admin.");
+        return;
+      }
+      if (res.ok) {
+        backendSaved = true;
+      }
     } catch (apiErr) {
       console.warn("Backend update sync note:", apiErr.message);
     }
@@ -378,17 +457,40 @@ const Admin = () => {
     setProducts(updated);
     saveStoredProducts(updated);
 
+    if (!backendSaved) {
+      try {
+        const queue = JSON.parse(localStorage.getItem("smoothie_offline_products_queue") || "[]");
+        const itemToQueue = updated.find((p) => p.id === editingProduct.id);
+        if (itemToQueue) {
+          localStorage.setItem(
+            "smoothie_offline_products_queue",
+            JSON.stringify([...queue.filter((q) => q.id !== editingProduct.id), itemToQueue])
+          );
+        }
+      } catch {}
+    }
+
     setEditingProduct(null);
-    showNotification(`✅ Updated "${formData.title}" details & pricing!`);
+    showNotification(
+      backendSaved
+        ? `✅ Updated "${formData.title}" details & pricing in MongoDB!`
+        : `✅ Updated "${formData.title}" offline (queued for auto-sync)!`
+    );
   };
 
   // Delete Product
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
     try {
-      await fetch(`/api/products/${productToDelete.id}`, {
+      const res = await fetch(`/api/products/${productToDelete.id}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
+      if (res.status === 401) {
+        logout();
+        alert("Session expired. Please log in again as admin.");
+        return;
+      }
     } catch (apiErr) {
       console.warn("Backend delete sync note:", apiErr.message);
     }
@@ -413,7 +515,15 @@ const Admin = () => {
     }
 
     try {
-      await fetch("/api/products/reset", { method: "POST" });
+      const res = await fetch("/api/products/reset", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (res.status === 401) {
+        logout();
+        alert("Session expired. Please log in again as admin.");
+        return;
+      }
     } catch (apiErr) {
       console.warn("Backend reset sync note:", apiErr.message);
     }

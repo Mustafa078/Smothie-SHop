@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import crypto from "crypto";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -184,7 +185,70 @@ const settingSchema = new mongoose.Schema({
 
 const Setting = mongoose.models.Setting || mongoose.model("Setting", settingSchema);
 
+// Admin Authentication & Security
+const JWT_SECRET = process.env.ADMIN_JWT_SECRET || "smoothie_shop_admin_secret_9876543210";
+let adminUsername = process.env.ADMIN_USERNAME || "admin";
 let adminPassword = process.env.ADMIN_PASSWORD || "admin";
+
+// Helper to retrieve effective password (checking MongoDB setting first)
+async function getEffectiveAdminPassword() {
+  if (isMongoConnected) {
+    try {
+      const doc = await Setting.findOne({ key: "admin_password" });
+      if (doc && doc.value) return doc.value;
+    } catch {}
+  }
+  return adminPassword;
+}
+
+// Generate signed HMAC Bearer token
+function generateAdminToken(username) {
+  const payload = {
+    user: username,
+    role: "admin",
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days expiration
+  };
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", JWT_SECRET)
+    .update(payloadBase64)
+    .digest("base64url");
+  return `${payloadBase64}.${signature}`;
+}
+
+// Verify signed HMAC Bearer token
+function verifyAdminToken(token) {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+    const [payloadBase64, signature] = parts;
+    const expectedSignature = crypto
+      .createHmac("sha256", JWT_SECRET)
+      .update(payloadBase64)
+      .digest("base64url");
+    if (signature !== expectedSignature) return null;
+    const payload = JSON.parse(Buffer.from(payloadBase64, "base64url").toString("utf-8"));
+    if (!payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// Express Security Middleware: Protects sensitive admin endpoints
+function requireAdminAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const verified = verifyAdminToken(token);
+  if (!verified) {
+    return res.status(401).json({
+      error: "Unauthorized: Protected route. Valid admin Bearer token required.",
+    });
+  }
+  req.admin = verified;
+  next();
+}
 
 // MongoDB Serverless Connection Management
 let isMongoConnected = false;
@@ -294,7 +358,38 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
-// GET /api/products - Get all products
+// POST /api/admin/login - Authenticate store admin and issue signed Bearer token
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required." });
+    }
+
+    const currentPass = await getEffectiveAdminPassword();
+
+    if (username !== adminUsername || password !== currentPass) {
+      return res.status(401).json({ error: "Invalid admin credentials." });
+    }
+
+    const token = generateAdminToken(username);
+    res.json({
+      success: true,
+      token,
+      user: { username: adminUsername, role: "admin" },
+      message: "Admin authentication successful.",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Login failed", details: err.message });
+  }
+});
+
+// GET /api/admin/verify - Verify active admin session token
+app.get("/api/admin/verify", requireAdminAuth, (req, res) => {
+  res.json({ valid: true, admin: req.admin });
+});
+
+// GET /api/products - Get all products (Public)
 app.get("/api/products", async (req, res) => {
   try {
     if (isMongoConnected) {
@@ -307,7 +402,7 @@ app.get("/api/products", async (req, res) => {
   res.json(inMemoryProducts);
 });
 
-// GET /api/products/:id - Get single product
+// GET /api/products/:id - Get single product (Public)
 app.get("/api/products/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -326,8 +421,8 @@ app.get("/api/products/:id", async (req, res) => {
   res.json(item);
 });
 
-// POST /api/products - Add new product
-app.post("/api/products", async (req, res) => {
+// POST /api/products - Add new product (Protected: Admin Only)
+app.post("/api/products", requireAdminAuth, async (req, res) => {
   try {
     const { title, price, thumbnail, shortDescription, description, category, inStock } = req.body;
 
@@ -335,7 +430,7 @@ app.post("/api/products", async (req, res) => {
       return res.status(400).json({ error: "Title and price are required." });
     }
 
-    const newId = String(Date.now());
+    const newId = req.body.id ? String(req.body.id) : String(Date.now());
     const newProduct = {
       id: newId,
       title: String(title).trim(),
@@ -366,8 +461,8 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// PUT /api/products/:id - Update product
-app.put("/api/products/:id", async (req, res) => {
+// PUT /api/products/:id - Update product (Protected: Admin Only)
+app.put("/api/products/:id", requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, price, thumbnail, shortDescription, description, category, inStock } = req.body;
@@ -406,8 +501,8 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id - Remove product
-app.delete("/api/products/:id", async (req, res) => {
+// DELETE /api/products/:id - Remove product (Protected: Admin Only)
+app.delete("/api/products/:id", requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -432,8 +527,8 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
-// POST /api/products/reset - Reset to default seed products
-app.post("/api/products/reset", async (req, res) => {
+// POST /api/products/reset - Reset to default seed products (Protected: Admin Only)
+app.post("/api/products/reset", requireAdminAuth, async (req, res) => {
   try {
     inMemoryProducts = [...defaultProducts];
 
@@ -452,8 +547,8 @@ app.post("/api/products/reset", async (req, res) => {
   }
 });
 
-// GET /api/orders - List all customer orders
-app.get("/api/orders", async (req, res) => {
+// GET /api/orders - List all customer orders (Protected: Admin Only)
+app.get("/api/orders", requireAdminAuth, async (req, res) => {
   try {
     if (isMongoConnected) {
       const orders = await Order.find().sort({ createdAt: -1 }).lean();
@@ -499,8 +594,110 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
-// POST /api/admin/change-password - Update store owner password
-app.post("/api/admin/change-password", async (req, res) => {
+// POST /api/sync/products - Sync products created or updated offline into MongoDB (Protected: Admin Only)
+app.post("/api/sync/products", requireAdminAuth, async (req, res) => {
+  try {
+    const { products } = req.body;
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.json({ message: "No products to sync", count: 0 });
+    }
+
+    let syncedCount = 0;
+    for (const p of products) {
+      if (!p.id || !p.title) continue;
+
+      const cleanProduct = {
+        id: String(p.id),
+        title: String(p.title).trim(),
+        price: Number(p.price) || 0,
+        thumbnail: p.rawThumbnail || p.thumbnail || "/src/assets/berry.jpg",
+        shortDescription: p.shortDescription || "",
+        description: p.description || "",
+        category: p.category || "Classic",
+        inStock: p.inStock !== undefined ? Boolean(p.inStock) : true,
+        updatedAt: new Date(),
+      };
+
+      if (isMongoConnected) {
+        try {
+          await Product.findOneAndUpdate(
+            { id: cleanProduct.id },
+            { $set: cleanProduct, $setOnInsert: { createdAt: new Date() } },
+            { upsert: true, new: true }
+          );
+          syncedCount++;
+        } catch (dbErr) {
+          console.warn("[Sync Error] Product sync error for", cleanProduct.id, dbErr.message);
+        }
+      }
+
+      // Also ensure memory store is updated
+      const existingIdx = inMemoryProducts.findIndex((item) => item.id === cleanProduct.id);
+      if (existingIdx >= 0) {
+        inMemoryProducts[existingIdx] = { ...inMemoryProducts[existingIdx], ...cleanProduct };
+      } else {
+        inMemoryProducts.push(cleanProduct);
+      }
+    }
+
+    res.json({
+      message: `Successfully synchronized ${syncedCount} products to MongoDB.`,
+      syncedCount,
+      mongoConnected: isMongoConnected,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Sync failed", details: err.message });
+  }
+});
+
+// POST /api/sync/orders - Sync offline orders into MongoDB (Protected: Admin Only)
+app.post("/api/sync/orders", requireAdminAuth, async (req, res) => {
+  try {
+    const { orders } = req.body;
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.json({ message: "No orders to sync", count: 0 });
+    }
+
+    let syncedCount = 0;
+    for (const o of orders) {
+      if (!o.id || !o.customer) continue;
+
+      if (isMongoConnected) {
+        try {
+          const existing = await Order.findOne({ id: o.id });
+          if (!existing) {
+            await Order.create({
+              id: o.id,
+              customer: o.customer,
+              items: o.items || [],
+              totalAmount: Number(o.totalAmount) || 0,
+              status: o.status || "Processing",
+              createdAt: o.createdAt ? new Date(o.createdAt) : new Date(),
+            });
+            syncedCount++;
+          }
+        } catch (dbErr) {
+          console.warn("[Sync Error] Order sync error for", o.id, dbErr.message);
+        }
+      }
+
+      if (!inMemoryOrders.some((item) => item.id === o.id)) {
+        inMemoryOrders.unshift(o);
+      }
+    }
+
+    res.json({
+      message: `Successfully synchronized ${syncedCount} orders to MongoDB.`,
+      syncedCount,
+      mongoConnected: isMongoConnected,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Order sync failed", details: err.message });
+  }
+});
+
+// POST /api/admin/change-password - Update store owner password (Protected: Admin Only)
+app.post("/api/admin/change-password", requireAdminAuth, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     let currentPass = adminPassword;

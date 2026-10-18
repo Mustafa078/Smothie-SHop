@@ -176,6 +176,13 @@ doc.moveDown(0.2);
 renderBullet("Owner Password Control", "The store owner can update their login password directly inside the Admin Console via the 'Change Password' modal.");
 renderBullet("Persistent Verification", "Password changes are validated against the current password and saved both in local storage and MongoDB for full-stack persistence.");
 
+doc.moveDown(0.4);
+doc.fillColor(PRIMARY).fontSize(10.5).font("Helvetica-Bold").text("D. API Route Protection & Bearer Token Security");
+doc.moveDown(0.2);
+renderBullet("Route Authorization", "Sensitive endpoints (POST/PUT/DELETE products, GET orders, bulk sync, password reset) require a cryptographically signed HMAC Bearer token.");
+renderBullet("Public vs. Protected Scope", "Customer storefront endpoints (GET /api/products, POST /api/orders, GET /api/health) remain public so shoppers can browse and order without authentication.");
+renderBullet("401 Unauthorized Defense", "Unauthenticated API calls receive HTTP 401 Unauthorized, preventing malicious product deletion, customer data theft, or tampering.");
+
 // -------------------------------------------------------------
 // SECTION 5: TECHNICAL SPECIFICATIONS TABLE
 // -------------------------------------------------------------

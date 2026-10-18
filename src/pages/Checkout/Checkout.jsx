@@ -57,7 +57,22 @@ const Checkout = () => {
           items: cart,
           totalAmount: total,
         }),
-      }).catch(() => {});
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Order API response not ok");
+        })
+        .catch(() => {
+          // If network or database was down, queue order for background sync
+          try {
+            const queue = JSON.parse(
+              localStorage.getItem("smoothie_offline_orders_queue") || "[]"
+            );
+            localStorage.setItem(
+              "smoothie_offline_orders_queue",
+              JSON.stringify([...queue, newOrder])
+            );
+          } catch {}
+        });
     } catch {
       // safe fallback
     }

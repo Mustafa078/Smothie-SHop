@@ -1,0 +1,21 @@
+<div class="smoothie-storefront-wrapper">
+  <div id="root">
+    <div style="padding: 40px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <h1 style="color: {{ settings.colors_primary | default: '#9c2f5f' }}; font-size: 2.2rem; margin-bottom: 12px;">
+        Smoothie Shop
+      </h1>
+      <p style="color: #666; font-size: 1.1rem; max-width: 600px; margin: 0 auto 24px;">
+        Delicious, fresh, handcrafted fruit smoothies made with 100% natural ingredients.
+      </p>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Smoothie Storefront",
+  "tag": "section",
+  "class": "section-smoothie-storefront",
+  "settings": []
+}
+{% endschema %}

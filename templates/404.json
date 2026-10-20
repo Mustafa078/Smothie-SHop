@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-smoothie-storefront",
+      "settings": {}
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

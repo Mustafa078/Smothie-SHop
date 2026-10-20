@@ -32,7 +32,6 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [mongoStatus, setMongoStatus] = useState({ connected: false, checked: false });
   const [notification, setNotification] = useState("");
-  const [showOwnerDocs, setShowOwnerDocs] = useState(false);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1309,30 +1308,13 @@ const Admin = () => {
         </div>
       )}
 
-      {/* Discreet Owner-Only Footer (Documentation is small, hidden by default, expandable only by owner) */}
+      {/* Admin Console Footer */}
       <footer className="admin-discreet-footer">
-        <span className="admin-discreet-copy">Smoothie Shop Admin &bull; System Console v1.3</span>
+        <span className="admin-discreet-copy">Smoothie Shop Admin &bull; Management Console v1.3</span>
         <div className="admin-discreet-tools">
-          <button
-            type="button"
-            className="admin-discreet-toggle-btn"
-            onClick={() => setShowOwnerDocs(!showOwnerDocs)}
-            title="System Reference"
-          >
-            {showOwnerDocs ? "▾ Hide System Docs" : "⚙️ System Reference"}
-          </button>
-          {showOwnerDocs && (
-            <a
-              href="/Smoothie_Shop_Project_Documentation.pdf"
-              download="Smoothie_Shop_Project_Documentation.pdf"
-              className="admin-discreet-doc-download"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Download Owner PDF Documentation"
-            >
-              📄 Download System Docs (PDF)
-            </a>
-          )}
+          <Link to="/" className="admin-discreet-toggle-btn">
+            🛍️ Storefront
+          </Link>
         </div>
       </footer>
     </div>

@@ -1,0 +1,73 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Smoothie Shop",
+    "theme_version": "1.0.0",
+    "theme_author": "Muhammad Faizan Mustafa",
+    "theme_documentation_url": "https://github.com/mfaizan/smoothie-shop",
+    "theme_support_url": "https://github.com/mfaizan/smoothie-shop"
+  },
+  {
+    "name": "Colors",
+    "settings": [
+      {
+        "type": "color",
+        "id": "colors_primary",
+        "label": "Primary Brand Color",
+        "default": "#9c2f5f"
+      },
+      {
+        "type": "color",
+        "id": "colors_secondary",
+        "label": "Secondary Green Accent",
+        "default": "#2f7d5a"
+      },
+      {
+        "type": "color",
+        "id": "colors_background",
+        "label": "Store Background Color",
+        "default": "#faf8f5"
+      },
+      {
+        "type": "color",
+        "id": "colors_text",
+        "label": "Body Text Color",
+        "default": "#20251f"
+      }
+    ]
+  },
+  {
+    "name": "Store Header",
+    "settings": [
+      {
+        "type": "text",
+        "id": "announcement_text",
+        "label": "Announcement Bar Text",
+        "default": "Free shipping on orders over $30! 100% Organic Fresh Fruit Smoothies"
+      },
+      {
+        "type": "checkbox",
+        "id": "show_announcement",
+        "label": "Show Announcement Bar",
+        "default": true
+      }
+    ]
+  },
+  {
+    "name": "Social Media Links",
+    "settings": [
+      {
+        "type": "text",
+        "id": "social_instagram_link",
+        "label": "Instagram URL",
+        "default": "https://instagram.com"
+      },
+      {
+        "type": "text",
+        "id": "social_facebook_link",
+        "label": "Facebook URL",
+        "default": "https://facebook.com"
+      }
+    ]
+  }
+]

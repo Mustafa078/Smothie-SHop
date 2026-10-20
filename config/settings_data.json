@@ -1,0 +1,15 @@
+{
+  "current": "Default",
+  "presets": {
+    "Default": {
+      "colors_primary": "#9c2f5f",
+      "colors_secondary": "#2f7d5a",
+      "colors_background": "#faf8f5",
+      "colors_text": "#20251f",
+      "announcement_text": "Free shipping on orders over $30! 100% Organic Fresh Fruit Smoothies",
+      "show_announcement": true,
+      "social_instagram_link": "https://instagram.com",
+      "social_facebook_link": "https://facebook.com"
+    }
+  }
+}

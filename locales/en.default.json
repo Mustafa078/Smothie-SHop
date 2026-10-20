@@ -1,0 +1,15 @@
+{
+  "general": {
+    "title": "Smoothie Shop",
+    "cart": "Cart",
+    "checkout": "Checkout",
+    "continue_shopping": "Continue Shopping",
+    "empty_cart": "Your cart is empty",
+    "subtotal": "Subtotal"
+  },
+  "products": {
+    "in_stock": "In Stock",
+    "out_of_stock": "Sold Out",
+    "add_to_cart": "Add to Cart"
+  }
+}

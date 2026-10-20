@@ -1,7 +1,7 @@
 {
-  "current": "Default",
+  "current": "Smoothie Shop",
   "presets": {
-    "Default": {
+    "Smoothie Shop": {
       "colors_primary": "#9c2f5f",
       "colors_secondary": "#2f7d5a",
       "colors_background": "#faf8f5",
